@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>IPO Admin | Diplomatic Inquiries</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="theme.js"></script>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen p-8">
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        <div class="flex justify-between items-center bg-surface-container-low p-6 border border-outline-variant rounded-sm shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-primary text-on-primary flex items-center justify-center rounded-sm">
+                    <span class="material-symbols-outlined">admin_panel_settings</span>
+                </div>
+                <div>
+                    <h1 class="text-headline-md font-headline-md text-primary">Diplomatic Inquiries</h1>
+                    <p class="text-label-lg text-on-surface-variant">Admin Dashboard Overview</p>
+                </div>
+            </div>
+            <button onclick="window.location.reload()" class="flex items-center gap-2 border border-outline-variant px-4 py-2 hover:bg-surface-container-high transition-colors rounded-sm">
+                <span class="material-symbols-outlined text-sm">refresh</span> Refresh Data
+            </button>
+        </div>
+
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-sm shadow-sm overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-surface-container-high text-label-lg text-primary uppercase tracking-wider">
+                    <tr>
+                        <th class="p-4 border-b border-outline-variant">Date</th>
+                        <th class="p-4 border-b border-outline-variant">Name</th>
+                        <th class="p-4 border-b border-outline-variant">Email</th>
+                        <th class="p-4 border-b border-outline-variant">Purpose</th>
+                        <th class="p-4 border-b border-outline-variant">Message</th>
+                    </tr>
+                </thead>
+                <tbody id="inquiriesTableBody" class="text-body-md text-on-surface-variant divide-y divide-outline-variant/50">
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-outline animate-pulse">Loading secure diplomatic data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXlbr9jMwnDudGTZ1W-dV3H3F8ETpko4Y",
+            authDomain: "int-partnership-office.firebaseapp.com",
+            projectId: "int-partnership-office",
+            storageBucket: "int-partnership-office.firebasestorage.app",
+            messagingSenderId: "60742639370",
+            appId: "1:60742639370:web:7cdcc56071acb0f9a724f3",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function fetchInquiries() {
+            const tableBody = document.getElementById('inquiriesTableBody');
+            
+            try {
+                // Fetch data ordered by newest first
+                const q = query(collection(db, "diplomatic_inquiries"), orderBy("timestamp", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                tableBody.innerHTML = ''; // Clear loading state
+
+                if (querySnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-outline">No inquiries found.</td></tr>';
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    // Format timestamp safely
+                    let dateStr = "Unknown Date";
+                    if (data.timestamp) {
+                        const dateObj = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+                        dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
+
+                    // Create table row
+                    const row = `
+                        <tr class="hover:bg-surface-container-low transition-colors">
+                            <td class="p-4 font-label-lg text-sm text-outline">${dateStr}</td>
+                            <td class="p-4 font-bold text-primary">${data.fullName || '-'}</td>
+                            <td class="p-4"><a href="mailto:${data.email}" class="text-secondary hover:underline">${data.email || '-'}</a></td>
+                            <td class="p-4"><span class="bg-surface-container-high px-2 py-1 rounded-sm text-xs font-label-lg tracking-wide">${data.purpose || '-'}</span></td>
+                            <td class="p-4 text-sm max-w-xs truncate" title="${data.message}">${data.message || '-'}</td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', row);
+                });
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-error">Error loading data. Check console and Firebase Rules.</td></tr>`;
+            }
+        }
+
+        fetchInquiries();
+    </script>
+</body>
+</html>
